@@ -77,7 +77,7 @@ int main(int argc, char *argv[]) {
 
 _Noreturn void *car(void *args) {
     int id = *((int *) args);
-    printf("Car: %d\n", id);
+    printf("Car: %03d\n", id);
     while (1) {
         sleep(rand() % 5 + 5);
         pthread_mutex_lock(&parking_mutex);
@@ -94,26 +94,33 @@ _Noreturn void *car(void *args) {
         if (parking.spots_available > 0) {
             pthread_cond_signal(&spot_becoming_available);
         }
+        printf("ENTRADA: Coche %03d aparca en planta %d, plaza %d. Plazas libres: %d.\n", id, aux[0], aux[1],parking.spots_available);
         print_parking();
         pthread_mutex_unlock(&parking_mutex);
+
         sleep(rand() % 5 + 5);
+
         pthread_mutex_lock(&parking_mutex);
         spot->id = 0;
         if (spot->spot_status == occupied) {
             spot->spot_status = unoccupied;
         }
         parking.spots_available++;
+        printf("SALIDA: Coche %03d saliendo. Plazas libres: %d.\n", id, parking.spots_available);
         print_parking();
         pthread_cond_broadcast(&truck_check);
-        pthread_cond_signal(&spot_becoming_available);
+        if (spot->spot_status == unoccupied) {
+            pthread_cond_signal(&spot_becoming_available);
+        }
         pthread_mutex_unlock(&parking_mutex);
+
         free(aux);
     }
 }
 
 _Noreturn void *truck(void *args) {
     int id = *((int *) args);
-    printf("Truck: %d\n", id);
+    printf("Truck: %03d\n", id);
     sleep(rand() % 5 + 5);
     while (1) {
 
@@ -131,9 +138,7 @@ _Noreturn void *truck(void *args) {
                 continue;
             }
             parking.levels[aux[0]].spots[aux[1]].spot_status = reserved;
-            parking.spots_available--;
-
-            print_parking();
+            //printf("RESERVA: Camión %03d reserva en planta %d, plaza %d.\n", id, aux[0], aux[1]);
             int check = 1;
             while (check) {
                 pthread_cond_wait(&truck_check, &parking_mutex);
@@ -154,6 +159,7 @@ _Noreturn void *truck(void *args) {
                     check = 0;
                     spot1 = &parking.levels[aux[0]].spots[aux[1]];
                     spot2 = &parking.levels[aux[0]].spots[aux[1] - 1];
+                    aux[1] = aux[1] - 1;
                 } else if (aux[1] != parking.levels[0].size - 1 && parking.levels[aux[0]].spots[aux[1] + 1].id == 0) {
                     if (aux[1] != 0) {
                         if (parking.levels[aux[0]].spots[aux[1] - 1].id == 0) {
@@ -176,10 +182,11 @@ _Noreturn void *truck(void *args) {
         spot1->id = id;
         spot2->spot_status = occupied;
         spot2->id = id;
-        parking.spots_available -= 2;
+        parking.spots_available-=2;
         if (parking.spots_available > 0) {
             pthread_cond_signal(&spot_becoming_available);
         }
+        printf("ENTRADA: Camión %03d aparca en planta %d, plazas %d y %d. Plazas libres: %d.\n", id, aux[0], aux[1], aux[1] + 1, parking.spots_available);
         print_parking();
         pthread_mutex_unlock(&parking_mutex);
         sleep(rand() % 5 + 5);
@@ -193,9 +200,12 @@ _Noreturn void *truck(void *args) {
             spot2->spot_status = unoccupied;
         }
         parking.spots_available += 2;
+        printf("SALIDA: Camión %03d saliendo. Plazas libres: %d.\n", id, parking.spots_available);
         print_parking();
         pthread_cond_broadcast(&truck_check);
-        pthread_cond_signal(&spot_becoming_available);
+        if (spot1->spot_status == unoccupied || spot2->spot_status == unoccupied) {
+            pthread_cond_signal(&spot_becoming_available);
+        }
         pthread_mutex_unlock(&parking_mutex);
         free(aux);
         sleep(rand() % 5 + 5);
@@ -203,10 +213,11 @@ _Noreturn void *truck(void *args) {
 }
 
 void print_parking() {
+    printf("Parking:\n");
     for (int i = 0; i < parking.size; ++i) {
+        printf("\tPlanta %d: ", i);
         for (int j = 0; j < parking.levels[i].size; ++j) {
-            printf("[%c%03d] ", spot_status_tToChar(parking.levels[i].spots[j].spot_status),
-                   parking.levels[i].spots[j].id);
+            printf("[%03d] ", parking.levels[i].spots[j].id);
         }
         printf("\n");
     }
