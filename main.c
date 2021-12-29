@@ -138,7 +138,6 @@ _Noreturn void *truck(void *args) {
                 continue;
             }
             parking.levels[aux[0]].spots[aux[1]].spot_status = reserved;
-            //printf("RESERVA: Camión %03d reserva en planta %d, plaza %d.\n", id, aux[0], aux[1]);
             int check = 1;
             while (check) {
                 pthread_cond_wait(&truck_check, &parking_mutex);
