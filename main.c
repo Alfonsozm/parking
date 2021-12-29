@@ -140,13 +140,13 @@ _Noreturn void *truck(void *args) {
             parking.levels[aux[0]].spots[aux[1]].spot_status = reserved;
             int check = 1;
             while (check) {
-                pthread_cond_wait(&truck_check, &parking_mutex);
                 if (aux[1] != 0) {
                     parking.levels[aux[0]].spots[aux[1] - 1].spot_status = reserved;
                 }
                 if (aux[1] != parking.levels[0].size - 1) {
                     parking.levels[aux[0]].spots[aux[1] + 1].spot_status = reserved;
                 }
+                pthread_cond_wait(&truck_check, &parking_mutex);
                 if (aux[1] != 0 && parking.levels[aux[0]].spots[aux[1] - 1].id == 0) {
                     if (aux[1] != parking.levels[0].size - 1) {
                         if (parking.levels[aux[0]].spots[aux[1] + 1].id == 0) {
