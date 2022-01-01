@@ -94,7 +94,7 @@ _Noreturn void *car(void *args) {
         if (parking.spots_available > 0) {
             pthread_cond_signal(&spot_becoming_available);
         }
-        printf("ENTRADA: Coche %03d aparca en planta %d, plaza %d. Plazas libres: %d.\n", id, aux[0], aux[1],parking.spots_available);
+        printf("ENTRADA: Coche %03d aparca en planta %d, plaza %d. Plazas libres: %d.\n", id, aux[0], aux[1], parking.spots_available);
         print_parking();
         pthread_mutex_unlock(&parking_mutex);
 
@@ -137,9 +137,9 @@ _Noreturn void *truck(void *args) {
                 pthread_mutex_unlock(&parking_mutex);
                 continue;
             }
-            parking.levels[aux[0]].spots[aux[1]].spot_status = reserved;
             int check = 1;
             while (check) {
+                parking.levels[aux[0]].spots[aux[1]].spot_status = reserved;
                 if (aux[1] != 0) {
                     parking.levels[aux[0]].spots[aux[1] - 1].spot_status = reserved;
                 }
@@ -181,7 +181,7 @@ _Noreturn void *truck(void *args) {
         spot1->id = id;
         spot2->spot_status = occupied;
         spot2->id = id;
-        parking.spots_available-=2;
+        parking.spots_available -= 2;
         if (parking.spots_available > 0) {
             pthread_cond_signal(&spot_becoming_available);
         }
@@ -202,7 +202,10 @@ _Noreturn void *truck(void *args) {
         printf("SALIDA: Camión %03d saliendo. Plazas libres: %d.\n", id, parking.spots_available);
         print_parking();
         pthread_cond_broadcast(&truck_check);
-        if (spot1->spot_status == unoccupied || spot2->spot_status == unoccupied) {
+        if (spot1->spot_status == unoccupied) {
+            pthread_cond_signal(&spot_becoming_available);
+        }
+        if (spot2->spot_status == unoccupied) {
             pthread_cond_signal(&spot_becoming_available);
         }
         pthread_mutex_unlock(&parking_mutex);
@@ -241,16 +244,16 @@ _Noreturn void init_parking(int levels, int spotsPerLevel, int carAmount, int tr
     pthread_mutex_init(&parking_mutex, NULL);
     pthread_cond_init(&spot_becoming_available, NULL);
     pthread_cond_init(&truck_check, NULL);
-    pthread_t *cars = malloc(carAmount * sizeof(pthread_t));
-    int *carPlates = malloc(carAmount * sizeof(int));
-    pthread_t *trucks = malloc(truckAmount * sizeof(pthread_t));
-    int *truckPlates = malloc(truckAmount * sizeof(int));
+    pthread_t *cars = (pthread_t *) malloc(carAmount * sizeof(pthread_t));
+    int *carPlates = (int *) malloc(carAmount * sizeof(int));
+    pthread_t *trucks = (pthread_t *) malloc(truckAmount * sizeof(pthread_t));
+    int *truckPlates = (int *) malloc(truckAmount * sizeof(int));
     parking.size = levels;
     parking.spots_available = levels * spotsPerLevel;
-    parking.levels = malloc(levels * sizeof(parking_level_t));
+    parking.levels = (parking_level_t *) malloc(levels * sizeof(parking_level_t));
     for (int i = 0; i < levels; ++i) {
         parking.levels[i].size = spotsPerLevel;
-        parking.levels[i].spots = malloc(spotsPerLevel * sizeof(spot_t));
+        parking.levels[i].spots = (spot_t *) malloc(spotsPerLevel * sizeof(spot_t));
         for (int j = 0; j < spotsPerLevel; ++j) {
             parking.levels[i].spots[i].spot_status = unoccupied;
             parking.levels[i].spots[i].id = 0;
@@ -273,7 +276,7 @@ int *search_empty_spot() {
     for (int i = 0; i < parking.size; ++i) {
         for (int j = 0; j < parking.levels[i].size; ++j) {
             if (parking.levels[i].spots[j].spot_status == unoccupied) {
-                int *aux = malloc(2 * sizeof(int));
+                int *aux = (int *) malloc(2 * sizeof(int));
                 aux[0] = i;
                 aux[1] = j;
                 return aux;
@@ -288,7 +291,7 @@ int *search_two_empty_spots() {
         for (int j = 0; j < parking.levels[i].size - 1; ++j) {
             if ((parking.levels[i].spots[j].spot_status == unoccupied) &&
                 (parking.levels[i].spots[j + 1].spot_status == unoccupied)) {
-                int *aux = malloc(2 * sizeof(int));
+                int *aux = (int *) malloc(2 * sizeof(int));
                 aux[0] = i;
                 aux[1] = j;
                 return aux;
